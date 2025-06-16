@@ -1,0 +1,194 @@
+import re
+import time
+import logging
+import json
+
+
+from concurrent.futures import ThreadPoolExecutor
+
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import CSVLoader
+from langchain_chroma import Chroma
+from langchain_ollama import OllamaLLM, OllamaEmbeddings
+from langchain.schema import Document
+
+from chromadb.config import Settings
+from chromadb import Client
+
+
+logging.basicConfig(level = logging.INFO)
+
+def convert_stat_to_text(stat_file_path):
+    with open(stat_file_path) as json_data:
+        stat = json.load(json_data)
+        logging.info(stat['data'])
+
+        info = []
+        for key in stat['data']:
+            logging.info(key)
+            logging.info(stat['data'][key])
+            if key == "fields":
+                text = "The dataset contains the columns: "
+                for field_name in stat['data'][key]:
+                    text = text + " " + field_name 
+                info.append(text)
+
+            if key == "date":
+                text = f"The dataset consists of the data from {stat['data'][key]['start_date']} to {stat['data'][key]['end_date']}" 
+                info.append(text)
+            
+            if key == "stat":
+                for field in stat["data"]["stat"]:
+                    s = stat["data"]["stat"][field] 
+                    text = (f"""For the whole period, This is the summary statistics: """ 
+                    f"""the mean value of {field} is {s["mean"]}, """
+                    f"""the min value of {field} is {s["min"]}, """
+                    f"""the max value of {field} is {s["max"]}, """
+                    f"""the median value of {field} is {s["median"]}, """
+                    f"""the sd value of {field} is {s["sd"]}""") 
+
+                    info.append(text.rstrip())
+            
+            if key == "correlation":
+                text = "The correlation between each fields are as follow, "
+                content = ""
+                for field in stat["data"]["correlation"]:
+                    c = stat["data"]["correlation"][field]
+                    for other_field in c:
+                        content = content + f"{field} and {other_field} is {c[other_field]}. "
+
+                info.append(text+content)
+            
+            if key == "summary_by_month":
+                for monthly_stat in stat["data"]["summary_by_month"]:
+                    text = f"This is the statistics summary of the month: {monthly_stat['month']}, year: {monthly_stat['year']}. "
+                    content = ""
+                    for key_field in monthly_stat["metrics"]:
+                        content = content + (
+                            f"""The {key_field}: max is {monthly_stat["metrics"][key_field]["max"]}, """
+                            f"""mean is {monthly_stat["metrics"][key_field]["mean"]}, """ 
+                            f"""min is {monthly_stat["metrics"][key_field]["min"]}, """ 
+                            f"""sd is {monthly_stat["metrics"][key_field]["std"]}. """ 
+                         )
+                    
+                    info.append(text+content)    
+            
+            if key == "summary_by_year":
+                for yearly_stat in stat["data"]["summary_by_year"]:
+                    text = f"This is the statistics summary of the whole year: {yearly_stat['year']}. "
+                    content = ""
+                    for key_field in yearly_stat["metrics"]:
+                        content = content + (
+                            f"""The {key_field}: max is {yearly_stat["metrics"][key_field]["max"]}, """
+                            f"""mean is {yearly_stat["metrics"][key_field]["mean"]}, """ 
+                            f"""min is {yearly_stat["metrics"][key_field]["min"]}, """ 
+                            f"""sd is {yearly_stat["metrics"][key_field]["std"]}. """ 
+                         )
+                    
+                    info.append(text+content)
+    
+    return info
+    
+
+
+def prepare_rag(csv_file_path, stat_file_path, session_id):
+    csv_loader = CSVLoader(file_path=csv_file_path,
+        csv_args={
+        'delimiter': ','
+    })
+
+    
+    logging.info("[prepare_rag] Load documents...")
+    csv_documents = csv_loader.load()
+
+
+    logging.info("[prepare_rag] Split to chunks")
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=50)
+    csv_chunks = text_splitter.split_documents(csv_documents)
+
+    stat_summary_text = convert_stat_to_text(stat_file_path)
+    stat_chunks = [
+        Document(page_content=text, metadata={"source": "stat.json", "type": "summary"})
+        for text in stat_summary_text
+    ]
+
+    logging.info("Merge chunks together...")
+    chunks = csv_chunks + stat_chunks
+
+    logging.info(chunks)
+
+    logging.info("[prepare_rag] Prepare the embedding functions...")
+    embedding_function = OllamaEmbeddings(
+        model="deepseek-r1:7b",
+        base_url="http://host.docker.internal:11434" 
+    )
+
+
+    def generate_embedding(chunk):
+        return embedding_function.embed_query(chunk.page_content)
+    
+    logging.info("[prepare_rag] Generating embeddings...")
+    with ThreadPoolExecutor() as executor:
+        embeddings = list(executor.map(generate_embedding, chunks))
+
+    logging.info("[prepare_rag] Initialize chroma...")
+    client = Client(Settings())
+    try:
+        client.delete_collection(name=session_id)  # Delete existing collection (if any)
+    except:
+        None
+    collection = client.create_collection(name=session_id)
+
+    for idx, chunk in enumerate(chunks):
+        collection.add(
+            documents=[chunk.page_content], 
+            metadatas=[{'id': idx}], 
+            embeddings=[embeddings[idx]], 
+            ids=[str(idx)]  # Ensure IDs are strings
+        )
+    
+    # ------
+    # TODO: Call get appropriate emotion here
+    
+    logging.info("[prepare_rag] Initialize retriever using Ollama embeddings for queries...")
+    retriever = Chroma(collection_name=session_id, client=client, embedding_function=embedding_function).as_retriever()
+    logging.info("Retriever processing time =>", time.time() - start)
+
+    # Step 7: Define the RAG Pipeline
+    def retrieve_context(question):
+    # Retrieve relevant documents
+        results = retriever.invoke(question)
+        # Combine the retrieved content
+        context = "\n\n".join([doc.page_content for doc in results])
+        return context
+    
+
+    logging.info("[prepare_rag] Start LLM...")
+    llm = OllamaLLM(
+        model="deepseek-r1:7b",
+        base_url="http://host.docker.internal:11434" 
+    ) 
+
+
+    def query_deepseek(question, context):
+        # Format the input prompt
+        formatted_prompt = f"Question: {question}\n\nContext: {context}"
+        # Query DeepSeek-R1 using Ollama
+        response = llm.invoke(formatted_prompt)
+        # Clean and return the response
+        response_content = response
+        final_answer = re.sub(r'<think>.*?</think>', '', response_content, flags=re.DOTALL).strip()
+        return final_answer
+
+    def ask_question(question):
+        # Retrieve context and generate an answer using RAG
+        context = retrieve_context(question)
+        answer = query_deepseek(question, context)
+        return answer
+    
+    logging.info("[prepare_rag] Asking Question...")
+    res = ask_question("What emotion is the most suitable to do the data storytelling for this dataset?")
+    logging.info(res)
+
+    
+

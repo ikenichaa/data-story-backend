@@ -194,11 +194,9 @@ def generate_descriptive_stats(df: pd.DataFrame):
     data["date"] = date
     data["stat"] = stat
     data["correlation"] = cor
-    data["summary"] = {
-        "summary_by_month": by_month,
-        "summary_by_year": by_year
-    }
-
+    data["summary_by_month"] = by_month
+    data["summary_by_year"] = by_year
+    
     final = {"data": data}
 
     return final

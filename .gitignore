@@ -1,0 +1,4 @@
+/backend
+/uploaded_files
+.env
+/*/full_climate.csv

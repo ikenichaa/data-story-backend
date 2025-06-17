@@ -1,5 +1,3 @@
-import re
-import time
 import logging
 import json
 
@@ -8,12 +6,13 @@ from concurrent.futures import ThreadPoolExecutor
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import CSVLoader
-from langchain_chroma import Chroma
-from langchain_ollama import OllamaLLM, OllamaEmbeddings
+from langchain_ollama import OllamaEmbeddings
 from langchain.schema import Document
 
 from chromadb.config import Settings
 from chromadb import Client
+
+from services.llm_recommend_emotion import get_appropriate_emotion
 
 
 logging.basicConfig(level = logging.INFO)
@@ -91,7 +90,7 @@ def convert_stat_to_text(stat_file_path):
     
 
 
-def prepare_rag(csv_file_path, stat_file_path, session_id):
+async def prepare_rag(csv_file_path, stat_file_path, session_id):
     csv_loader = CSVLoader(file_path=csv_file_path,
         csv_args={
         'delimiter': ','
@@ -146,49 +145,5 @@ def prepare_rag(csv_file_path, stat_file_path, session_id):
             embeddings=[embeddings[idx]], 
             ids=[str(idx)]  # Ensure IDs are strings
         )
-    
-    # ------
-    # TODO: Call get appropriate emotion here
-    
-    logging.info("[prepare_rag] Initialize retriever using Ollama embeddings for queries...")
-    retriever = Chroma(collection_name=session_id, client=client, embedding_function=embedding_function).as_retriever()
-    logging.info("Retriever processing time =>", time.time() - start)
 
-    # Step 7: Define the RAG Pipeline
-    def retrieve_context(question):
-    # Retrieve relevant documents
-        results = retriever.invoke(question)
-        # Combine the retrieved content
-        context = "\n\n".join([doc.page_content for doc in results])
-        return context
-    
-
-    logging.info("[prepare_rag] Start LLM...")
-    llm = OllamaLLM(
-        model="deepseek-r1:7b",
-        base_url="http://host.docker.internal:11434" 
-    ) 
-
-
-    def query_deepseek(question, context):
-        # Format the input prompt
-        formatted_prompt = f"Question: {question}\n\nContext: {context}"
-        # Query DeepSeek-R1 using Ollama
-        response = llm.invoke(formatted_prompt)
-        # Clean and return the response
-        response_content = response
-        final_answer = re.sub(r'<think>.*?</think>', '', response_content, flags=re.DOTALL).strip()
-        return final_answer
-
-    def ask_question(question):
-        # Retrieve context and generate an answer using RAG
-        context = retrieve_context(question)
-        answer = query_deepseek(question, context)
-        return answer
-    
-    logging.info("[prepare_rag] Asking Question...")
-    res = ask_question("What emotion is the most suitable to do the data storytelling for this dataset?")
-    logging.info(res)
-
-    
-
+    return await get_appropriate_emotion(session_id)

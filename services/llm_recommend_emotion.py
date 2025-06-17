@@ -1,4 +1,5 @@
 import re
+import json
 import logging
 
 from langchain_chroma import Chroma
@@ -6,9 +7,10 @@ from chromadb import Client
 from chromadb.config import Settings
 
 from langchain_ollama import OllamaLLM, OllamaEmbeddings
-from langchain.schema import HumanMessage
+from redis_manager import RedisManager
 
 logging.basicConfig(level=logging.INFO)
+from ws.websocket import manager 
 
 positive_emotions = [
    "empathy", 
@@ -29,9 +31,30 @@ negative_emotions = [
    "disgust"
 ]
 
+def extract_json_response(full_response: str):
+    match = re.search(r"```json(.*?)```", full_response, re.DOTALL)
+    if match:
+        json_str = match.group(1).strip()
+        try:
+            return json.loads(json_str)
+        except json.JSONDecodeError as e:
+            print("JSON decode error:", e)
+            return None
+    else:
+        print("No JSON block found.")
+        return None
+
+def get_description_from_redis(session_id):
+    redis_client = RedisManager.get_client()
+    res = redis_client.get(session_id)
+    logging.info(f"Get data from redis: {res}")
+
+    json_res = json.loads(res)
+
+    return json_res["description"]
 
 
-def get_appropriate_emotion(session_id):
+async def get_appropriate_emotion(session_id):
     logging.info("[prepare_rag] Initialize retriever using Ollama embeddings for queries...")
     embedding_function = OllamaEmbeddings(
         model="deepseek-r1:7b",
@@ -68,8 +91,8 @@ def get_appropriate_emotion(session_id):
         answer = query_deepseek(question, context)
         return answer
     
-    description = "Climate datset in delhi"
-
+    description = get_description_from_redis(session_id)
+    
     logging.info("[prepare_rag] Asking Question...")
     res = ask_question(
         (
@@ -82,21 +105,12 @@ def get_appropriate_emotion(session_id):
             "The response should be in json format: {'feeling': 'positive | negative', 'emotion': '...', 'reason': '....'}"
         )
     )
-    logging.info(res)
 
-    # prompt_msg = generate_prompt_for_emotion(description, csv_fields)
-    # logging.info("[Prompt 1]: Generating list of emotions...")
+    logging.info(f"Response from LLM: {res}")
 
-    # res = llm.invoke([prompt_msg])
-    # logging.info(f"Response: {res}")
+    json_response = extract_json_response(res)
+    logging.info(f"Json Response: {json_response}")
 
-    # ignore_think = extract_response_from_think(res)
-    # logging.info(f"Ignore think: {ignore_think}")
+    return json_response
 
-    # json_response = extract_json_response(ignore_think)
-    # logging.info(f"Json Response: {json_response}")
-
-
-    # logging.info(f"Generating response time: {(time.time()-start_time)}")
-
-    return ""
+    # await manager.send_message(session_id, json_response)

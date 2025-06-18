@@ -12,8 +12,9 @@ from langchain.schema import Document
 from chromadb.config import Settings
 from chromadb import Client
 
-from services.llm_recommend_emotion import get_appropriate_emotion
 
+# from ws.websocket import websocket_manager
+chroma_client = Client(Settings())
 
 logging.basicConfig(level = logging.INFO)
 
@@ -131,13 +132,14 @@ async def prepare_rag(csv_file_path, stat_file_path, session_id):
         embeddings = list(executor.map(generate_embedding, chunks))
 
     logging.info("[prepare_rag] Initialize chroma...")
-    client = Client(Settings())
+
     try:
-        client.delete_collection(name=session_id)  # Delete existing collection (if any)
+        chroma_client.delete_collection(name=session_id)  # Delete existing collection (if any)
     except:
         None
-    collection = client.create_collection(name=session_id)
+    collection = chroma_client.create_collection(name=session_id)
 
+    # await websocket_manager.send_message(session_id, json.dumps({"status": "Preparing RAG"}))
     for idx, chunk in enumerate(chunks):
         collection.add(
             documents=[chunk.page_content], 
@@ -146,4 +148,4 @@ async def prepare_rag(csv_file_path, stat_file_path, session_id):
             ids=[str(idx)]  # Ensure IDs are strings
         )
 
-    return await get_appropriate_emotion(session_id)
+    

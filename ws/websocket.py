@@ -27,21 +27,14 @@ class ConnectionManager:
             logging.error(f"No websocket: {websocket} found")
 
 
-# @router.websocket("/ws")
-# async def websocket_endpoint(websocket: WebSocket):
-#     await websocket.accept()
-#     while True:
-#         data = await websocket.receive_text()
-#         await websocket.send_text(f"Message text was: {data}")
-
-manager = ConnectionManager()
+websocket_manager = ConnectionManager()
 
 @router.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
-    await manager.connect(websocket, session_id)
+    await websocket_manager.connect(websocket, session_id)
     try:
         while True:
             data = await websocket.receive_text()
-            await manager.send_message(session_id, f"You wrote: {data}")
+            await websocket_manager.send_message(session_id, f"You wrote: {data}")
     except WebSocketDisconnect:
-        manager.disconnect(session_id)
+        websocket_manager.disconnect(session_id)

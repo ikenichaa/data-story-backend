@@ -25,11 +25,11 @@ async def generate_story(
     logging.info(session_id)
     logging.info(agency)
 
-    try:
-        chroma_client.get_collection(name=session_id)
-    except:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return {"error": f"The chroma vector for session_id: {session_id} is not found"}
+    # try:
+    #     chroma_client.get_collection(name=session_id)
+    # except:
+    #     response.status_code = status.HTTP_404_NOT_FOUND
+    #     return {"error": f"The chroma vector for session_id: {session_id} is not found"}
 
     asyncio.create_task(llm_generate_story(
             session_id, 

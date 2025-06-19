@@ -38,8 +38,8 @@ async def upload_pipeline(df, session_dir, session_id):
     stat_file_path = session_dir / "stat.json"
     await prepare_stat(df, stat_file_path) 
 
-    csv_file_path = session_dir/ "data.csv" 
-    await prepare_rag(csv_file_path, stat_file_path, session_id)
+    # csv_file_path = session_dir/ "data.csv" 
+    # await prepare_rag(csv_file_path, stat_file_path, session_id)
     await get_appropriate_emotion(session_id)
 
 

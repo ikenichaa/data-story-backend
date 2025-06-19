@@ -113,7 +113,8 @@ async def prepare_rag(csv_file_path, stat_file_path, session_id):
     ]
 
     logging.info("Merge chunks together...")
-    chunks = csv_chunks + stat_chunks
+    # chunks = csv_chunks + stat_chunks
+    chunks =  stat_chunks
 
     logging.info(chunks)
 
@@ -139,7 +140,7 @@ async def prepare_rag(csv_file_path, stat_file_path, session_id):
         None
     collection = chroma_client.create_collection(name=session_id)
 
-    # await websocket_manager.send_message(session_id, json.dumps({"status": "Preparing RAG"}))
+    logging.info(f"-----> There are a total of {len(chunks)} chunks")
     for idx, chunk in enumerate(chunks):
         collection.add(
             documents=[chunk.page_content], 

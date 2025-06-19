@@ -7,8 +7,12 @@ from chromadb.config import Settings
 from chromadb import Client
 
 from langchain_ollama import OllamaLLM, OllamaEmbeddings
+from services.rag import convert_stat_to_text
 
 logging.basicConfig(level=logging.INFO)
+from pathlib import Path
+
+UPLOAD_ROOT = Path("uploaded_files")
 
 def extract_json_response(full_response: str):
     match = re.search(r"```json(.*?)```", full_response, re.DOTALL)
@@ -28,25 +32,28 @@ def get_answer(session_id: str, is_return_json: bool, question: str):
         model="deepseek-r1:7b",
         base_url="http://host.docker.internal:11434" 
     )
-    chroma_client = Client(Settings())
+    # chroma_client = Client(Settings())
     
-    logging.info("[prepare_rag] Initialize retriever using Ollama embeddings for queries...")
-    retriever = Chroma(collection_name=session_id, client=chroma_client, embedding_function=embedding_function).as_retriever()
+    # logging.info("[prepare_rag] Initialize retriever using Ollama embeddings for queries...")
+    # retriever = Chroma(collection_name=session_id, client=chroma_client, embedding_function=embedding_function).as_retriever()
 
     llm = OllamaLLM(
         model="deepseek-r1:7b",
         base_url="http://host.docker.internal:11434" 
     ) 
 
-    def retrieve_context(question):
-        results = retriever.invoke(question)
+    # def retrieve_context(question):
+    #     results = retriever.invoke(question)
 
-        context = "\n\n".join([doc.page_content for doc in results])
-        return context
+    #     context = "\n\n".join([doc.page_content for doc in results])
+    #     logging.info(f"----> There are {len(results)} being retrieved....")
+    #     return context
     
     def query_deepseek(question, context):
         # Format the input prompt
-        formatted_prompt = f"Question: {question}\n\nContext: {context}"
+        logging.info(f"-----> Retrieved Context: {context}")
+        # formatted_prompt = f"Question: {question}\n\nContext: {context}"
+        formatted_prompt = question
         # Query DeepSeek-R1 using Ollama
         response = llm.invoke(formatted_prompt)
         # Clean and return the response
@@ -56,8 +63,9 @@ def get_answer(session_id: str, is_return_json: bool, question: str):
 
     def ask_question(question):
         # Retrieve context and generate an answer using RAG
-        context = retrieve_context(question)
-        answer = query_deepseek(question, context)
+        # context = retrieve_context(question)
+        
+        answer = query_deepseek(question, "")
         return answer
     
     

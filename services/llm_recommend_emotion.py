@@ -3,9 +3,13 @@ import logging
 
 from services.redis_util import get_description_from_redis
 from services.llm_template import get_answer
-from ws.websocket import websocket_manager 
+from ws.websocket import websocket_manager
+
+from services.rag import convert_stat_to_text
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
+UPLOAD_ROOT = Path("uploaded_files")
 
 positive_emotions = [
    "empathy", 
@@ -28,22 +32,38 @@ negative_emotions = [
 
 async def get_appropriate_emotion(session_id):
     logging.info("[prepare_rag] Initialize retriever using Ollama embeddings for queries...")
+
+    session_dir = UPLOAD_ROOT/session_id
+    stat_file_path = session_dir / "stat.json"
+    stat_summary_list = convert_stat_to_text(stat_file_path)
+    stat_summary_text = '. '.join(stat_summary_list)
+
+    logging.info(stat_summary_text)
     
     description = get_description_from_redis(session_id)
     res = get_answer(
         session_id,
         True,
         (
-            f"You are a data story-teller. Your goal is to recommend the best emotion from the list provided to generate data storytelling that help user to understand and recall data more based on the provided dataset and description"
+            f"You are a data storyteller. Your goal is to recommend the best emotion from the list provided to generate data storytelling that helps users understand and recall data more based on the provided dataset and description."
             f"Description of the dataset: {description}"
-            "Give weight more to the description as the user may want to get some specific emotion"
-            "First, choose either POSITIVE or NEGATIVE emotion that suit the input"
-            f"Then, If you choose POSITIVE then pick ONE of the POSTIVIE emotions in the list {positive_emotions} that suit the data narrative for the input best"
-            f"If you choose NEGTIVE then pick ONE of the POSTIVIE emotions in the list {negative_emotions} that suit the data narrative for the input best"
-            f"Give reasoning in ONE sentence"
-            "The response should be in json format: ```json{'feeling': 'positive | negative', 'emotion': '...', 'reason': '....'}```"
+
+            "Guideline:"
+            "- Give more weight to the description, as the user may want to get some specific emotion."
+            "- First, choose either POSITIVE or NEGATIVE emotion that suits the input"
+            f"- Then, if you decide POSITIVE, pick ONE of the positive emotions in the list {positive_emotions} that suits the data narrative for the input best"
+            f"- If you choose NEGATIVE, then pick ONE of the POSITIVE emotions in the list {negative_emotions} that suit the data narrative for the input best"
+            f"- Give reasoning in ONE sentence."
+
+            "Context:"
+            f"{stat_summary_text}"
+
+            "Output:"
+            "The response should be in JSON format: ```json {'feeling': 'positive | negative', 'emotion': '...', 'reason': '....'}```"
         )
     )
+
+    logging.info(f"--------> {res}")
     
 
     await websocket_manager.send_message(session_id, json.dumps({

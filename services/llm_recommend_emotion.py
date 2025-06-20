@@ -35,36 +35,34 @@ async def get_appropriate_emotion(session_id):
 
     session_dir = UPLOAD_ROOT/session_id
     stat_file_path = session_dir / "stat.json"
-    stat_summary_list = convert_stat_to_text(stat_file_path)
-    stat_summary_text = '. '.join(stat_summary_list)
+    with open(stat_file_path) as json_data:
+        stat = json.load(json_data)
+        field_description = "The dataset contains the columns: "
+        for field_name in stat['data']['fields']:
+            field_description = field_description + " " + field_name 
+    
 
-    logging.info(stat_summary_text)
+    logging.info(field_description)
     
     description = get_description_from_redis(session_id)
     res = get_answer(
-        session_id,
         True,
         (
             f"You are a data storyteller. Your goal is to recommend the best emotion from the list provided to generate data storytelling that helps users understand and recall data more based on the provided dataset and description."
             f"Description of the dataset: {description}"
+            f"{field_description}"
 
             "Guideline:"
-            "- Give more weight to the description, as the user may want to get some specific emotion."
+            "- Give high weight to the description when generating an answer, as the user may want to evoke a specific emotion."
             "- First, choose either POSITIVE or NEGATIVE emotion that suits the input"
             f"- Then, if you decide POSITIVE, pick ONE of the positive emotions in the list {positive_emotions} that suits the data narrative for the input best"
             f"- If you choose NEGATIVE, then pick ONE of the POSITIVE emotions in the list {negative_emotions} that suit the data narrative for the input best"
             f"- Give reasoning in ONE sentence."
 
-            "Context:"
-            f"{stat_summary_text}"
-
             "Output:"
             "The response should be in JSON format: ```json {'feeling': 'positive | negative', 'emotion': '...', 'reason': '....'}```"
         )
     )
-
-    logging.info(f"--------> {res}")
-    
 
     await websocket_manager.send_message(session_id, json.dumps({
         "data": {

@@ -21,58 +21,26 @@ def extract_json_response(full_response: str):
         try:
             return json.loads(json_str)
         except json.JSONDecodeError as e:
-            print("JSON decode error:", e)
-            return None
+            logging.info("JSON decode error:", e)
+            return full_response
     else:
-        print("No JSON block found.")
-        return None
+        logging.info("No JSON block found.")
+        return full_response
     
-def get_answer(session_id: str, is_return_json: bool, question: str):
-    embedding_function = OllamaEmbeddings(
-        model="deepseek-r1:7b",
-        base_url="http://host.docker.internal:11434" 
-    )
-    # chroma_client = Client(Settings())
-    
-    # logging.info("[prepare_rag] Initialize retriever using Ollama embeddings for queries...")
-    # retriever = Chroma(collection_name=session_id, client=chroma_client, embedding_function=embedding_function).as_retriever()
+def get_answer(is_return_json: bool, question: str):
 
     llm = OllamaLLM(
         model="deepseek-r1:7b",
         base_url="http://host.docker.internal:11434" 
     ) 
 
-    # def retrieve_context(question):
-    #     results = retriever.invoke(question)
-
-    #     context = "\n\n".join([doc.page_content for doc in results])
-    #     logging.info(f"----> There are {len(results)} being retrieved....")
-    #     return context
-    
-    def query_deepseek(question, context):
-        # Format the input prompt
-        logging.info(f"-----> Retrieved Context: {context}")
-        # formatted_prompt = f"Question: {question}\n\nContext: {context}"
-        formatted_prompt = question
-        # Query DeepSeek-R1 using Ollama
-        response = llm.invoke(formatted_prompt)
-        # Clean and return the response
-        response_content = response
-        final_answer = re.sub(r'<think>.*?</think>', '', response_content, flags=re.DOTALL).strip()
+    def query_deepseek(question):
+        response = llm.invoke(question)
+        final_answer = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
         return final_answer
-
-    def ask_question(question):
-        # Retrieve context and generate an answer using RAG
-        # context = retrieve_context(question)
-        
-        answer = query_deepseek(question, "")
-        return answer
-    
-    
     
     logging.info("[prepare_rag] Asking Question...")
-    # await websocket_manager.send_message(session_id, json.dumps({"status": "Generating emotion recommendation"}))
-    res = ask_question(question)
+    res = query_deepseek(question)
 
     logging.info(f"Response from LLM: {res}")
 

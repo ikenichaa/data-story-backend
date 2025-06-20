@@ -26,26 +26,32 @@ async def llm_generate_story(
     stat_summary_list = convert_stat_to_text(stat_file_path)
     stat_summary_text = '. '.join(stat_summary_list)
 
+    logging.info(f"Stat Summary Text: {stat_summary_text}")
+
+    if intensity_level <=3:
+        tone = "Low Emotion Intensity Level. Use subtle emotional cues."
+    elif intensity_level <=6:
+        tone = "Medium Emotion Intensity Level. Use emotionally descriptive language."
+    else:
+        tone = "High Emotion Intensity Level. Use dramatic and vivid emotional phrasing."
+
     is_return_json = False
     res = get_answer(
-        session_id,
         is_return_json,
         (
-           "Role: You are a Story-Driven Data Scientist. Your mission is to craft a compelling one-paragraph summary of the dataset that strikes a balance between analytical depth and emotional resonance. Your expertise lies in blending data insights with nuanced emotional tones."
+           "Role: You are a Story-Driven Data Scientist. "
+           "Your mission is to craft a one-paragraph summary of the dataset that strikes a balance between analytical depth and emotional resonance."
+           "Your expertise lies in blending data insights with nuanced emotional tones."
 
             "Context:"
-            f"- File description: {description}"
             f"- Purpose of the story: {purpose}"
-            f"- Emotion to convey: {emotion} at intensity level {intensity_level} out of 10"
+            f"- Emotion to convey: {emotion}"
             f"- Target word count: {word_count} words"
 
             "Guidelines:"
-            "1. Analyze the provided data and summary"
+            f"1. Analyze the provided data and summary according to the user input {description} with emotion of {emotion}"
             "2. Identify and highlight key patterns, and trends."
-            "3. Shape the narrative to reflect the assigned emotion and intensity level:"
-            "- Intensity 1–3 (Low): Use subtle emotional cues."
-            "- Intensity 4–7 (Medium): Use emotionally descriptive language."
-            "- Intensity 8–10 (High): Use dramatic and vivid emotional phrasing."
+            f"3. Shape the narrative to reflect the {tone}"
             f"4. Ensure that the generated story aligns with the purpose: **{purpose}**."
             "5. Do **not** use bullet points or headings. Respond in a fluid, essay-style paragraph."
             "6. Preserve data accuracy. Do **not** exaggerate or fabricate insights—only adjust the tone."

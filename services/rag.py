@@ -21,31 +21,31 @@ logging.basicConfig(level = logging.INFO)
 def convert_stat_to_text(stat_file_path):
     with open(stat_file_path) as json_data:
         stat = json.load(json_data)
-        logging.info(stat['data'])
 
         info = []
         for key in stat['data']:
             logging.info(key)
             logging.info(stat['data'][key])
             if key == "fields":
-                text = "The dataset contains the columns: "
+                text = "The dataset includes the following columns:"
                 for field_name in stat['data'][key]:
-                    text = text + " " + field_name 
+                    text = text + ", " + field_name
+                text = text + ". These fields represent the data."
                 info.append(text)
 
             if key == "date":
-                text = f"The dataset consists of the data from {stat['data'][key]['start_date']} to {stat['data'][key]['end_date']}" 
+                text = f"Timespan | Date | Time period = The dataset consists of the data from {stat['data'][key]['start_date']} to {stat['data'][key]['end_date']}" 
                 info.append(text)
             
             if key == "stat":
                 for field in stat["data"]["stat"]:
                     s = stat["data"]["stat"][field] 
-                    text = (f"""For the whole period, This is the summary statistics: """ 
-                    f"""the mean value of {field} is {s["mean"]}, """
-                    f"""the min value of {field} is {s["min"]}, """
-                    f"""the max value of {field} is {s["max"]}, """
-                    f"""the median value of {field} is {s["median"]}, """
-                    f"""the sd value of {field} is {s["sd"]}""") 
+                    text = (f"""For the whole period, This is the summary statistics of the field {field}: """ 
+                    f"""the mean value is {s["mean"]}, """
+                    f"""the min value is {s["min"]}, """
+                    f"""the max value is {s["max"]}, """
+                    f"""the median is {s["median"]}, """
+                    f"""the sd value is {s["sd"]}""") 
 
                     info.append(text.rstrip())
             

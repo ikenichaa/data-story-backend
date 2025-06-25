@@ -8,6 +8,7 @@ logging.basicConfig(level=logging.INFO)
 from ws.websocket import websocket_manager 
 from services.rag import convert_stat_to_text
 from pathlib import Path
+from services.stat_q_a import generate_stat_q_and_a
 
 UPLOAD_ROOT = Path("uploaded_files")
 
@@ -23,10 +24,14 @@ async def llm_generate_story(
 
     session_dir = UPLOAD_ROOT/session_id
     stat_file_path = session_dir / "stat.json"
-    stat_summary_list = convert_stat_to_text(stat_file_path)
-    stat_summary_text = '. '.join(stat_summary_list)
+    # Before
+    # stat_summary_list = convert_stat_to_text(stat_file_path)
+    # stat_summary_text = '. '.join(stat_summary_list)
 
-    logging.info(f"Stat Summary Text: {stat_summary_text}")
+    # After
+    # Using Q and A form
+    q_a = generate_stat_q_and_a(stat_file_path)
+    logging.info(f"Q and A: {q_a}")
 
     if intensity_level <=3:
         tone = "Low Emotion Intensity Level. Use subtle emotional cues."
@@ -35,10 +40,7 @@ async def llm_generate_story(
     else:
         tone = "High Emotion Intensity Level. Use dramatic and vivid emotional phrasing."
 
-    is_return_json = False
-    res = get_answer(
-        is_return_json,
-        (
+    prompt = (
            "Role: You are a Story-Driven Data Scientist. "
            "Your mission is to craft a one-paragraph summary of the dataset that strikes a balance between analytical depth and emotional resonance."
            "Your expertise lies in blending data insights with nuanced emotional tones."
@@ -63,11 +65,17 @@ async def llm_generate_story(
             "- If the information is insufficient to support an emotional or narrative claim, acknowledge that limitation subtly rather than inventing content to fill the gap."
 
             "Context"
-            f"{stat_summary_text}"
+            f"{q_a}"
 
             "Output:"
             "- Write a single-paragraph story summarising the data and its implications, shaped by the emotion and purpose above."
         )
+    
+    logging.info(f"Prompt: {prompt}")
+    is_return_json = False
+    res = get_answer(
+        is_return_json,
+        prompt
     )
     
 

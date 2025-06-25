@@ -1,6 +1,7 @@
 import pandas as pd
 import logging
 import json
+from services.stat_q_a import date_time_common_formats, get_date
 
 def get_date_field(fields):
     """
@@ -163,12 +164,13 @@ def generate_descriptive_stats(df: pd.DataFrame):
     """
     date = {}
     date_field = get_date_field(fields)
+    df["date_with_format"] = df[date_field].map(lambda x: get_date(x))
 
-    start_date = min(df[date_field])
-    end_date = max(df[date_field])
+    start_date = min(df["date_with_format"])
+    end_date = max(df["date_with_format"])
 
-    date["start_date"] = start_date
-    date["end_date"] = end_date
+    date["start_date"] = str(start_date)
+    date["end_date"] = str(end_date)
 
     """
     Descriptive stat

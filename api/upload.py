@@ -9,7 +9,7 @@ from pathlib import Path
 
 from redis_manager import RedisManager
 from services.generate_stat import generate_descriptive_stats
-from services.llm_recommend_emotion import get_appropriate_emotion
+from services.llm_recommend_emotion import llm_emotion_recommendation
 
 router = APIRouter()
 
@@ -24,11 +24,11 @@ async def prepare_stat(df: pd.DataFrame, stat_file_path):
         f.write(json.dumps(res, indent=4))
 
     
-async def upload_pipeline(df, session_dir, session_id):
+async def upload_pipeline(df, session_dir, session_id, description):
     stat_file_path = session_dir / "stat.json"
 
     await prepare_stat(df, stat_file_path) 
-    await get_appropriate_emotion(session_id)
+    await llm_emotion_recommendation(session_id, description)
 
 
 
@@ -74,7 +74,7 @@ async def upload_file_and_description(
     logging.info("[API] Upload the file and description")
 
     df = pd.read_csv(csv_file_path)
-    asyncio.create_task(upload_pipeline(df, session_dir, session_id))
+    asyncio.create_task(upload_pipeline(df, session_dir, session_id, description))
     
     return {
         "status": "processing"

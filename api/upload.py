@@ -2,28 +2,19 @@ import logging
 import json
 import asyncio
 
-
 import pandas as pd
 
 from fastapi import APIRouter, UploadFile, File, Form, Response, status
-
 from pathlib import Path
+
 from redis_manager import RedisManager
 from services.generate_stat import generate_descriptive_stats
-from services.rag import prepare_rag
 from services.llm_recommend_emotion import get_appropriate_emotion
-from ws.websocket import websocket_manager 
-
 
 router = APIRouter()
 
 logging.basicConfig(level = logging.INFO)
 UPLOAD_ROOT = Path("uploaded_files")
-
-# TODO: Delete this API
-@router.post("/test-rag-json")
-async def test_rag_json():
-   await websocket_manager.send_message("xxxx", "test send message...")
 
 
 async def prepare_stat(df: pd.DataFrame, stat_file_path):
@@ -33,13 +24,10 @@ async def prepare_stat(df: pd.DataFrame, stat_file_path):
         f.write(json.dumps(res, indent=4))
 
     
-
 async def upload_pipeline(df, session_dir, session_id):
     stat_file_path = session_dir / "stat.json"
-    await prepare_stat(df, stat_file_path) 
 
-    # csv_file_path = session_dir/ "data.csv" 
-    # await prepare_rag(csv_file_path, stat_file_path, session_id)
+    await prepare_stat(df, stat_file_path) 
     await get_appropriate_emotion(session_id)
 
 
@@ -81,6 +69,7 @@ async def upload_file_and_description(
     }
     redis_client = RedisManager.get_client()
     redis_client.set(session_id, json.dumps(value))
+    redis_client.expire(session_id, 20*60)  # Set expiration time to 20 minutes
 
     logging.info("[API] Upload the file and description")
 

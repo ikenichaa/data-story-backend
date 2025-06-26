@@ -50,7 +50,7 @@ class InAppropriateEmotion(BaseModel):
     inappropriate_emotion: str = Field(description="the inappropriate emotion for the data narrative")
     reason: str = Field(description="the reason for the inappropriate emotion recommendation")
 
-def create_chain_for_recommended_emotion():
+def recommended_emotion_chain_generator():
     recommended_emotion_parser = JsonOutputParser(pydantic_object=EmotionRecommendation)
     recommended_emotion_template = (
         "You are a data storyteller. Your goal is to recommend the best emotion from the list provided to generate data storytelling that helps users understand and recall data more based on the provided dataset and description.\n"
@@ -75,8 +75,7 @@ def create_chain_for_recommended_emotion():
 
     return recommended_emotion_prompt | model | recommended_emotion_parser
 
-def create_chain_for_inappropriate_emotion():
-    # TASK 2: LLM Inappropriate Emotion Recommendation
+def inappropriate_emotion_chain_generator():
     inappropriate_emotion_parser = JsonOutputParser(pydantic_object=InAppropriateEmotion)
     inappropriate_emotion_template = (
         "You are a data storyteller. Your role is to ensure that users do not select inappropriate emotions when crafting a narrative based on the dataset.\n"
@@ -120,8 +119,8 @@ async def llm_emotion_recommendation(session_id: str, description: str):
     logging.info("Starting emotion recommendation process...")
     field_summary = field_name_summary(session_id)
 
-    recommended_emotion_chain = create_chain_for_recommended_emotion()
-    inappropriate_emotion_chain = create_chain_for_inappropriate_emotion()
+    recommended_emotion_chain = recommended_emotion_chain_generator()
+    inappropriate_emotion_chain = inappropriate_emotion_chain_generator()
 
     runnable = RunnableParallel(
         recommend_emotion=recommended_emotion_chain, 
@@ -137,18 +136,28 @@ async def llm_emotion_recommendation(session_id: str, description: str):
 
     logging.info(f"Emotion recommendation result: {res}")
 
+    if "properties" in res['recommend_emotion']:
+        recommended_emotion_result = res['recommend_emotion']["properties"]
+    else:
+        recommended_emotion_result = res['recommend_emotion']
+
     # Send the results back to the websocket
     await websocket_manager.send_message(session_id, json.dumps({
         "data": {
             "title": "recommended_emotion",
-            "result": res['recommend_emotion']
+            "result": recommended_emotion_result
         }
     }))
+
+    if "properties" in res['inappropriate_emotion']:
+        inappropriate_emotion_result = res['inappropriate_emotion']["properties"]
+    else:
+        inappropriate_emotion_result = res['inappropriate_emotion']
 
     await websocket_manager.send_message(session_id, json.dumps({
         "data": {
             "title": "inappropriate_emotion",
-            "result": res['inappropriate_emotion']
+            "result": inappropriate_emotion_result
         }
     }))
     

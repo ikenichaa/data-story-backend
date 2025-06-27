@@ -10,6 +10,7 @@ from pathlib import Path
 from redis_manager import RedisManager
 from services.generate_stat import generate_descriptive_stats
 from services.llm_recommend_emotion import llm_emotion_recommendation
+from services.llm_extract_description import extract_description
 
 router = APIRouter()
 
@@ -29,6 +30,7 @@ async def upload_pipeline(df, session_dir, session_id, description):
 
     await prepare_stat(df, stat_file_path) 
     await llm_emotion_recommendation(session_id, description)
+    await extract_description(session_id, description)
 
 
 

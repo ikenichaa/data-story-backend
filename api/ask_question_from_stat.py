@@ -56,7 +56,6 @@ async def ask_question_from_stat(
 @router.post("/ask-question-from-json/{session_id}")
 async def ask_question_from_json(
         session_id: str,
-        desc: Desc,
     ):
     
     session_dir = UPLOAD_ROOT/session_id

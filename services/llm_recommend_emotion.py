@@ -10,9 +10,9 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.runnables import RunnableParallel
 from langchain_ollama import OllamaLLM
-from langchain.globals import set_debug
+# from langchain.globals import set_debug
 
-set_debug(True)
+# set_debug(True)
 logging.basicConfig(level=logging.INFO)
 UPLOAD_ROOT = Path("uploaded_files")
 
@@ -134,7 +134,7 @@ async def llm_emotion_recommendation(session_id: str, description: str):
         "negative_emotions": negative_emotions
     })
 
-    logging.info(f"Emotion recommendation result: {res}")
+    logging.info(f"Emotion recommendation result------->: {res}")
 
     if "properties" in res['recommend_emotion']:
         recommended_emotion_result = res['recommend_emotion']["properties"]

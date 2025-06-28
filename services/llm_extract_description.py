@@ -26,13 +26,18 @@ class summary_instruction(BaseModel):
 def dataset_topic_chain_generator():
     core_concept_parser = JsonOutputParser(pydantic_object=core_concept)
     core_concept_template = (
-        "You are a data storyteller. Your goal is to extract the core topic of the dataset based on the provided description.\n"
+        "You are a data storyteller. Your goal is to extract the core concept (what is the dataset is about) based on the provided description.\n"
         "Description of the dataset: {description}\n"
         "Guideline:\n"
         "- The core concept should be a short phrase that captures the essence of the dataset on what the dataset is about.\n"
         "- It should be concise and easy to understand.\n"
         "- It should NOT include any specific data points or statistics.\n"
         "- It should be relevant to the overall theme of the dataset.\n"
+
+        "Output format:\n"
+        "- You MUST respond **only with a valid JSON object** matching the schema below.\n"
+        "- Do NOT include explanations, apologies, commentary, or markdown formatting.\n"
+        "- Return ONLY the JSON object, no surrounding text.\n"
 
         "{format_instructions}\n"
     )
@@ -54,6 +59,11 @@ def instruction_chain_generator():
         "- First, check if there is any instruction on theme of the story or not.\n"
         "- If there is no instruction, respond that there is no instruction\n"
         "- If there is instruction, provide the instruction in a short phrase that captures the theme and tone that the user wants the story to talk about.\n"
+
+        "Output format:\n"
+        "- You MUST respond **only with a valid JSON object** matching the schema below.\n"
+        "- Do NOT include explanations, apologies, commentary, or markdown formatting.\n"
+        "- Return ONLY the JSON object, no surrounding text.\n"
 
         "{format_instructions}\n"
     )

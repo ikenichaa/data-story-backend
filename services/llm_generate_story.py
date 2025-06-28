@@ -4,13 +4,12 @@ import logging
 from services.redis_util import get_description_from_redis
 from services.llm_template import get_answer
 
-logging.basicConfig(level=logging.INFO)
 from ws.websocket import websocket_manager 
-from services.rag import convert_stat_to_text
 from pathlib import Path
 from services.stat_q_a import generate_stat_q_and_a
 
 UPLOAD_ROOT = Path("uploaded_files")
+logging.basicConfig(level=logging.INFO)
 
 async def llm_generate_story(
         session_id: str, 

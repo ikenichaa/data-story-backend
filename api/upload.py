@@ -11,6 +11,7 @@ from redis_manager import RedisManager
 from services.generate_stat import generate_descriptive_stats
 from services.llm_recommend_emotion import llm_emotion_recommendation
 from services.llm_extract_description import extract_description
+from services.llm_summarize_story import llm_summarize_story
 
 router = APIRouter()
 
@@ -28,9 +29,13 @@ async def prepare_stat(df: pd.DataFrame, stat_file_path):
 async def upload_pipeline(df, session_dir, session_id, description):
     stat_file_path = session_dir / "stat.json"
 
-    await prepare_stat(df, stat_file_path) 
-    await llm_emotion_recommendation(session_id, description)
-    await extract_description(session_id, description)
+    try:
+        # await prepare_stat(df, stat_file_path) 
+        # await llm_emotion_recommendation(session_id, description)
+        await extract_description(session_id, description)
+        await llm_summarize_story(session_id)
+    except Exception as e:
+        logging.error(f"Error in upload pipeline: {e}")
 
 
 

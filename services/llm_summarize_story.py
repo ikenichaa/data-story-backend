@@ -111,7 +111,7 @@ async def llm_summarize_story(session_id: str):
     stat_file_path = session_dir / "stat.json"
 
     core_concept = get_core_concept(session_id)
-    if not core_concept:
+    if not isinstance(core_concept, str):
         core_concept = get_description_from_redis(session_id)
 
     with open(stat_file_path) as json_data:

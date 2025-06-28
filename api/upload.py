@@ -30,8 +30,8 @@ async def upload_pipeline(df, session_dir, session_id, description):
     stat_file_path = session_dir / "stat.json"
 
     try:
-        # await prepare_stat(df, stat_file_path) 
-        # await llm_emotion_recommendation(session_id, description)
+        await prepare_stat(df, stat_file_path) 
+        await llm_emotion_recommendation(session_id, description)
         await extract_description(session_id, description)
         await llm_summarize_story(session_id)
     except Exception as e:

@@ -10,9 +10,9 @@ from ws.websocket import websocket_manager
 from services.redis_util import get_description_instruction, get_core_concept, get_description_from_redis
 
 from pathlib import Path
-from langchain.globals import set_debug
+# from langchain.globals import set_debug
 
-set_debug(True)
+# set_debug(True)
 
 logging.basicConfig(level=logging.INFO)
 UPLOAD_ROOT = Path("uploaded_files")
@@ -50,7 +50,7 @@ async def llm_generate_affective_narrative(
     
     # Prepare the prompt
     prompt_template = (
-        "You are a data storyteller. Your goal is to generate an affective narrative.\n"
+        "You are a data storyteller. Your goal is to add emotion to the summarized data\n"
         "This is the summarized data: {story_content}\n"
         
         
@@ -59,7 +59,7 @@ async def llm_generate_affective_narrative(
         "- The closer the intensity level is to 10, the more intense the emotion should be.\n"
         "- The narrative should be approximately {word_count} words long.\n"
         "- Ensure that the narrative aligns with the purpose of {purpose}.\n"
-        "- Use the core concept: '{core_concept}', and  user instruction: {user_instruction} as the foundation for the narrative.\n"
+        "- Focus on representing facts and data in a way that evokes subtle specified emotion.\n"
         "- The narrative should be engaging and coherent. \n"
         
         "Output format:\n"

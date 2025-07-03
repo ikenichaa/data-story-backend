@@ -10,6 +10,8 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.runnables import RunnableParallel
 from langchain_ollama import OllamaLLM
+from langchain_core.exceptions import OutputParserException
+import time
 # from langchain.globals import set_debug
 
 # set_debug(True)
@@ -47,7 +49,7 @@ class EmotionRecommendation(BaseModel):
 
 class InAppropriateEmotion(BaseModel):
     is_there_inappropriate_emotion: bool = Field(description="whether there is an inappropriate emotion for the data narrative")
-    inappropriate_emotion: str = Field(description="the inappropriate emotion for the data narrative")
+    inappropriate_emotions: list[str] = Field(description="the inappropriate emotions for this data narrative")
     reason: str = Field(description="the reason for the inappropriate emotion recommendation")
 
 def recommended_emotion_chain_generator():
@@ -61,8 +63,9 @@ def recommended_emotion_chain_generator():
         "- Give high weight to the description when generating an answer, as the user may want to evoke a specific emotion.\n"
         "- First, choose either POSITIVE or NEGATIVE emotion that suits the input.\n"
         "- Then, if you decide POSITIVE, pick ONE of the positive emotions in the list {positive_emotions} that suits the data narrative for the input best.\n"
-        "- If you choose NEGATIVE, then pick ONE of the POSITIVE emotions in the list {negative_emotions} that suit the data narrative for the input best.\n"
+        "- If you choose NEGATIVE, then pick ONE of the NEGATIVE emotions in the list {negative_emotions} that suit the data narrative for the input best.\n"
         "- Give reasoning in ONE sentence.\n"
+        "- Provide the emotion and reason in JSON format with the following structure:\n"
 
         "{format_instructions}\n"
     )
@@ -78,16 +81,17 @@ def recommended_emotion_chain_generator():
 def inappropriate_emotion_chain_generator():
     inappropriate_emotion_parser = JsonOutputParser(pydantic_object=InAppropriateEmotion)
     inappropriate_emotion_template = (
-        "You are a data storyteller. Your role is to ensure that users do not select inappropriate emotions when crafting a narrative based on the dataset.\n"
+        "You are a data storyteller. Your role is to choose the inappropriate emotions that should not be used when crafting a narrative based on the dataset.\n"
         "Description of the dataset: {description}\n"
         "{field_summary}\n"
 
         "Guideline:"
         "- First, determine whether the dataset is emotionally sensitive.\n"
         "- A dataset is considered sensitive if it involves topics such as tragic events, trauma, loss, or other serious human experiences..\n"
-        "- If the dataset is sensitive, advise against using certain emotions that may be inappropriate (e.g., avoid positive emotions for tragic data, or avoid negative emotions for celebratory data).\n"
+        "- If the dataset is sensitive, advise against using certain emotions that may be inappropriate (e.g., avoid Joy, Excitement, Amusement, Contentment, Surprise for tragic data, or avoid Sadness, Anger, Fear for celebratory data).\n"
         "- If the dataset is **NOT** sensitive, respond that there are no inappropriate emotions, and leave the Emotion and Reason fields blank.\n"
-        "- If the dataset is **SENSITIVE**, specify whether it is inappropriate to recommend positive or negative emotions.\n"
+        "- If the dataset is **SENSITIVE**, specify the emotions in the list {emotion_list} that should not be used to narrate story.\n"
+        "- Choose only upto 5 inappropriate emotions as the user must be able to choose some emotions"
         "- Provide a brief reason (in one sentence) explaining your decision.\n"
 
         "{format_instructions}\n"
@@ -127,14 +131,33 @@ async def llm_emotion_recommendation(session_id: str, description: str):
         inappropriate_emotion=inappropriate_emotion_chain
     )
 
-    res = runnable.invoke({
-        "description": description,
-        "field_summary": field_summary,
-        "positive_emotions": positive_emotions,
-        "negative_emotions": negative_emotions
-    })
+    max_retries = 5
+    for i in range(max_retries):
+        try:
+            logging.info(f"Attempt {i+1}/{max_retries} to parse JSON output from LLM...")
+            res = await runnable.ainvoke({
+                "description": description,
+                "field_summary": field_summary,
+                "positive_emotions": positive_emotions,
+                "negative_emotions": negative_emotions,
+                "emotion_list": positive_emotions + negative_emotions
+            })
 
-    logging.info(f"Emotion recommendation result------->: {res}")
+            logging.info("Emotion recommendation process completed.")
+            break
+            
+        except OutputParserException as e:
+            logging.warning(f"JSON parsing failed (attempt {i+1}/{max_retries}): {e}")
+            logging.warning(f"Raw LLM output (might be malformed): {e.llm_output}") # Langchain often attaches llm_output to the exception
+            if i < max_retries - 1:
+                time.sleep(1) # Wait a bit before retrying
+                # You could modify the prompt for the retry here if you want to be more sophisticated
+            else:
+                logging.error(f"Failed to parse JSON after {max_retries} attempts.")
+                raise # Re-raise the exception if all retries fail
+        except Exception as e:
+            logging.error(f"An unexpected error occurred: {e}")
+            raise
 
     if "properties" in res['recommend_emotion']:
         recommended_emotion_result = res['recommend_emotion']["properties"]
@@ -142,17 +165,46 @@ async def llm_emotion_recommendation(session_id: str, description: str):
         recommended_emotion_result = res['recommend_emotion']
 
     # Send the results back to the websocket
-    await websocket_manager.send_message(session_id, json.dumps({
-        "data": {
-            "title": "recommended_emotion",
-            "result": recommended_emotion_result
-        }
-    }))
+    logging.info(f"The recommended emotion result =====> {recommended_emotion_result}")
+    try:
+        recommended_res = json.dumps({
+            "data": {
+                "title": "recommended_emotion",
+                "result": recommended_emotion_result
+            }
+        })
 
-    if "properties" in res['inappropriate_emotion']:
-        inappropriate_emotion_result = res['inappropriate_emotion']["properties"]
-    else:
-        inappropriate_emotion_result = res['inappropriate_emotion']
+        await websocket_manager.send_message(session_id, recommended_res)
+    except Exception as e:
+        logging.error(f"Error in parsing result to json: {e}")
+        recommended_res = json.dumps({
+            "data": {
+                "title": "recommended_emotion",
+                "result": {
+                    "emotion": "neutral",
+                    "reason": ""
+                }
+            }
+        })
+        
+    
+        await websocket_manager.send_message(session_id, recommended_res)
+       
+        
+    
+    try:
+        if "properties" in res['inappropriate_emotion']:
+            inappropriate_emotion_result = res['inappropriate_emotion']["properties"]
+        else:
+            
+            inappropriate_emotion_result = res['inappropriate_emotion']
+    except Exception as e:
+        logging.error(f"Error in parsing inappropriate emotion result: {e}")
+        inappropriate_emotion_result = {
+            "is_there_inappropriate_emotion": False,
+            "inappropriate_emotion": [],
+            "reason": ""
+        }
 
     await websocket_manager.send_message(session_id, json.dumps({
         "data": {

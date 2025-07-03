@@ -10,8 +10,7 @@ from pathlib import Path
 from redis_manager import RedisManager
 from services.generate_stat import generate_descriptive_stats
 from services.llm_recommend_emotion import llm_emotion_recommendation
-from services.llm_extract_description import extract_description
-from services.llm_summarize_story import llm_summarize_story
+from ws.websocket import websocket_manager
 
 router = APIRouter()
 
@@ -20,10 +19,13 @@ UPLOAD_ROOT = Path("uploaded_files")
 
 
 async def prepare_stat(df: pd.DataFrame, stat_file_path):
+    logging.info("[API] Preparing statistics for the uploaded file")
     res = generate_descriptive_stats(df)
     
     with open(stat_file_path, "w") as f:
         f.write(json.dumps(res, indent=4))
+    
+    logging.info("[API] Done preparing statistics for the uploaded file")
 
     
 async def upload_pipeline(df, session_dir, session_id, description):
@@ -32,10 +34,15 @@ async def upload_pipeline(df, session_dir, session_id, description):
     try:
         await prepare_stat(df, stat_file_path) 
         await llm_emotion_recommendation(session_id, description)
-        await extract_description(session_id, description)
-        await llm_summarize_story(session_id)
     except Exception as e:
         logging.error(f"Error in upload pipeline: {e}")
+
+        await websocket_manager.send_message(session_id, json.dumps({
+        "data": {
+            "title": "recommended_emotion",
+            "result": "error"
+        }
+    }))
 
 
 

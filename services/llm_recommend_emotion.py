@@ -12,9 +12,9 @@ from langchain_core.runnables import RunnableParallel
 from langchain_ollama import OllamaLLM
 from langchain_core.exceptions import OutputParserException
 import time
-# from langchain.globals import set_debug
+from langchain.globals import set_debug
 
-# set_debug(True)
+set_debug(True)
 logging.basicConfig(level=logging.INFO)
 UPLOAD_ROOT = Path("uploaded_files")
 
@@ -61,8 +61,8 @@ def recommended_emotion_chain_generator():
 
         "Guideline:"
         "- Give high weight to the description when generating an answer, as the user may want to evoke a specific emotion.\n"
-        "- First, choose either POSITIVE or NEGATIVE emotion that suits the input.\n"
-        "- Then, if you decide POSITIVE, pick ONE of the positive emotions in the list {positive_emotions} that suits the data narrative for the input best.\n"
+        "- First, choose either a positive or negative emotion that suits the input.\n"
+        "- Then, if you decide positively, pick one of the positive emotions in the list {positive_emotions} that best suits the data narrative for the input.\n"
         "- If you choose NEGATIVE, then pick ONE of the NEGATIVE emotions in the list {negative_emotions} that suit the data narrative for the input best.\n"
         "- Give reasoning in ONE sentence.\n"
         "- Provide the emotion and reason in JSON format with the following structure:\n"

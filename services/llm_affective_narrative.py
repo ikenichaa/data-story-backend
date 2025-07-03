@@ -10,9 +10,9 @@ from ws.websocket import websocket_manager
 from services.redis_util import get_description_instruction, get_core_concept, get_description_from_redis
 
 from pathlib import Path
-# from langchain.globals import set_debug
+from langchain.globals import set_debug
 
-# set_debug(True)
+set_debug(True)
 
 logging.basicConfig(level=logging.INFO)
 UPLOAD_ROOT = Path("uploaded_files")

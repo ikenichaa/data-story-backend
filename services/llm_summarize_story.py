@@ -3,7 +3,7 @@ import logging
 import asyncio
 
 from langchain_core.prompts import PromptTemplate 
-from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
+from langchain_core.output_parsers import StrOutputParser
 from langchain_ollama import OllamaLLM
 
 from services.stat_q_a import getting_to_know_field, getting_to_know_the_correlation
@@ -12,7 +12,6 @@ from services.redis_util import get_description_from_redis
 from services.redis_util import get_core_concept
 
 from pathlib import Path
-from pydantic import BaseModel, Field
 
 logging.basicConfig(level=logging.INFO)
 UPLOAD_ROOT = Path("uploaded_files")
@@ -21,14 +20,7 @@ model = OllamaLLM(
     base_url="http://host.docker.internal:11434" 
 )
 
-# class field_stat_narrative(BaseModel):
-#     narrative: str = Field(description="the narrative for the field based on the statistical analysis")
-
-# class data_story_narrative(BaseModel):
-#     narrative: str = Field(description="the narrative for the data story based on the statistical analysis of each field and correlation")
-
 def field_narrative_chain_generator():
-    # field_narrative_parser = JsonOutputParser(pydantic_object=field_stat_narrative)
     field_narrative_template = (
         "You are a data storyteller. Your goal is to generate a short summary from a given stat.\n"
         "The dataset is about {core_concept}\n"
@@ -39,25 +31,16 @@ def field_narrative_chain_generator():
         "- Do NOT make up any stories without fact from the context.\n"
         "- Specify the number.\n"
         "- Write in paragraph format. Not the bullet point format.\n"
-
-        # "Output format:\n"
-        # "- You MUST respond **only with a valid JSON object** matching the schema below.\n"
-        # "- Do NOT include explanations, apologies, commentary, or markdown formatting.\n"
-        # "- Return ONLY the JSON object, no surrounding text.\n"
-
-        # "{format_instructions}\n"
     )
 
     field_narrative_prompt = PromptTemplate(
         input_variables=["core_concept", "summarized_stat"],
         template=field_narrative_template,
-        # partial_variables={"format_instructions": field_narrative_parser.get_format_instructions()},
     )
 
     return field_narrative_prompt | model | StrOutputParser()
 
 def data_story_chain_generator():
-    # data_story_parser = JsonOutputParser(pydantic_object=field_stat_narrative)
     data_story_template = (
         "You are a data storyteller. Your goal is to generate a data story from given summary of each field.\n"
         "The dataset is about {core_concept}\n"
@@ -70,20 +53,11 @@ def data_story_chain_generator():
         "- Do NOT make up any stories without fact from the context.\n"
         "- Specify the number.\n"
         "- Write in paragraph format. Not the bullet point format.\n"
-
-        # "Output format:\n"
-        # "- You MUST respond **only with a valid JSON object** matching the schema below.\n"
-        # "- Do NOT include explanations, apologies, commentary, or markdown formatting.\n"
-        # "- Return ONLY the JSON object, no surrounding text.\n"
-
-
-        # "{format_instructions}\n"
     )
 
     data_story_prompt = PromptTemplate(
         input_variables=["core_concept", "fields_summary", "correlation_summary"],
         template=data_story_template,
-        # partial_variables={"format_instructions": data_story_parser.get_format_instructions()},
     )
 
     return data_story_prompt | model | StrOutputParser()

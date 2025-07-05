@@ -6,7 +6,7 @@ import asyncio
 
 from services.llm_affective_narrative import llm_generate_affective_narrative
 from services.llm_extract_description import extract_description
-from services.llm_summarize_story import llm_summarize_story
+from services.llm_summarize_story import llm_summarize_story_v2
 
 from services.redis_util import get_description_from_redis
 
@@ -19,33 +19,26 @@ class Agency(BaseModel):
     word_count: int
     purpose: str
 
-async def affective_narrative_pipeline(session_id, description, agency: Agency):
+async def affective_narrative_pipeline_v2(session_id, description, agency: Agency):
     try:
         await extract_description(session_id, description)
-        await llm_summarize_story(session_id)
-        await llm_generate_affective_narrative(
-            session_id, 
-            agency.emotion,
-            agency.intensity_level,
-            agency.word_count,
-            agency.purpose,
-            "story.txt"
-        )
+        await llm_summarize_story_v2(session_id, agency)
+        
     except Exception as e:
         logging.error(f"Error in affective_narrative pipeline: {e}")
 
-@router.post("/generate-affective-narrative/{session_id}", status_code=status.HTTP_202_ACCEPTED)
+@router.post("/v2/generate-affective-narrative/{session_id}", status_code=status.HTTP_202_ACCEPTED)
 async def generate_affective_narrative(
     session_id: str, 
     agency: Agency
     ):
 
-    logging.info("Generating affective narrative...")
+    logging.info("Generating affective narrative v2...")
     logging.info(session_id)
     logging.info(agency)
 
     description = get_description_from_redis(session_id) 
-    asyncio.create_task(affective_narrative_pipeline(session_id, description, agency))
+    asyncio.create_task(affective_narrative_pipeline_v2(session_id, description, agency))
 
     return {"status": "processing"}
 

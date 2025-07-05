@@ -26,7 +26,8 @@ async def llm_generate_affective_narrative(
     emotion: str, 
     intensity_level: int,
     word_count: int,
-    purpose: str
+    purpose: str,
+    story_file: str
 ):
     """
     Generate an affective narrative based on the provided parameters.
@@ -43,7 +44,7 @@ async def llm_generate_affective_narrative(
         logging.info("No core concept found for the session.")
     
     session_dir = UPLOAD_ROOT/session_id
-    story_file_path = session_dir / "story.txt"
+    story_file_path = session_dir / story_file
     with open(story_file_path) as f:
         story_content = f.read()
         
@@ -61,6 +62,7 @@ async def llm_generate_affective_narrative(
         "- Ensure that the narrative aligns with the purpose of {purpose}.\n"
         "- Focus on representing facts and data in a way that evokes subtle specified emotion.\n"
         "- The narrative should be engaging and coherent. \n"
+        
         
         "Output format:\n"
         "- Provide a single paragraph narrative."

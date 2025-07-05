@@ -3,3 +3,4 @@
 .env
 /*/full_climate.csv
 /ollama/ollama/*
+__pycache__/

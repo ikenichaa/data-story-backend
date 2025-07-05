@@ -139,8 +139,3 @@ def generate_descriptive_stats(df: pd.DataFrame):
     final = {"data": data}
 
     return final
-
-if __name__ == "__main__":
-    df = pd.read_csv("full_climate.csv")
-    res = generate_descriptive_stats(df)
-    print(json.dumps(res, indent = 4))

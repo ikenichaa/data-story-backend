@@ -4,7 +4,6 @@ from fastapi import APIRouter, status
 from pydantic import BaseModel
 import asyncio
 
-from services.llm_affective_narrative import llm_generate_affective_narrative
 from services.llm_extract_description import extract_description
 from services.llm_summarize_story import llm_summarize_story_v2
 

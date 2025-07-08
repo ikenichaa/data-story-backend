@@ -4,7 +4,6 @@ from fastapi import APIRouter, status
 from pydantic import BaseModel
 import asyncio
 
-from services.llm_extract_description import extract_description
 from services.llm_summarize_story import llm_summarize_story_v2
 
 from services.redis_util import get_description_from_redis
@@ -20,7 +19,6 @@ class Agency(BaseModel):
 
 async def affective_narrative_pipeline_v2(session_id, description, agency: Agency):
     try:
-        await extract_description(session_id, description)
         await llm_summarize_story_v2(session_id, agency)
         
     except Exception as e:

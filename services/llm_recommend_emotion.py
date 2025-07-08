@@ -1,5 +1,7 @@
 import json
 import logging
+import time
+import os
 
 from pathlib import Path
 from pydantic import BaseModel, Field
@@ -11,8 +13,10 @@ from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.runnables import RunnableParallel
 from langchain_ollama import OllamaLLM
 from langchain_core.exceptions import OutputParserException
-import time
+
 from langchain.globals import set_debug
+from langchain_openai import ChatOpenAI
+
 
 set_debug(True)
 logging.basicConfig(level=logging.INFO)
@@ -37,9 +41,18 @@ negative_emotions = [
    "disgust"
 ]
 
-model = OllamaLLM(
-    model="llama3.1:8b",
-    base_url="http://host.docker.internal:11434" 
+# model = OllamaLLM(
+#     model="llama3.1:8b",
+#     base_url="http://host.docker.internal:11434" 
+# )
+os.environ.get("OPENAI_API_KEY")
+
+model = ChatOpenAI(
+    model="gpt-4.1-nano",
+    temperature=1,
+    max_tokens=None,
+    timeout=None,
+    max_retries=2,
 )
 
 # Define your desired data structure.

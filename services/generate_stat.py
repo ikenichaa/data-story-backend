@@ -1,5 +1,4 @@
 import pandas as pd
-import json
 import logging
 
 from util.date import get_date

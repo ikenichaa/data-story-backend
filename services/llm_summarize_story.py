@@ -1,12 +1,13 @@
 import json
 import logging
-import asyncio
+import os
 
 from langchain_core.prompts import PromptTemplate 
 from langchain_core.output_parsers import StrOutputParser
 from langchain_ollama import OllamaLLM
 from pydantic import BaseModel
 from ws.websocket import websocket_manager
+from langchain_openai import ChatOpenAI
 
 from services.stat_q_a import data_change_through_out_year
 
@@ -17,9 +18,19 @@ from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 UPLOAD_ROOT = Path("uploaded_files")
-model = OllamaLLM(
-    model="llama3.1:8b",
-    base_url="http://host.docker.internal:11434" 
+# model = OllamaLLM(
+#     model="llama3.1:8b",
+#     base_url="http://host.docker.internal:11434" 
+# )
+
+os.environ.get("OPENAI_API_KEY")
+
+model = ChatOpenAI(
+    model="gpt-4.1-nano",
+    temperature=1,
+    max_tokens=None,
+    timeout=None,
+    max_retries=2,
 )
 
 # This V2 is trying to avoid Calculation in LLM
@@ -34,8 +45,7 @@ def data_story_chain_generator_v2():
         "- The closer the intensity level is to 10, the more intense the emotion should be.\n"
         "- The narrative should be approximately {word_count} words long.\n"
         "- Ensure that the narrative aligns with the purpose of {purpose}.\n"
-        "- DO NOT specify the number. DO NOT calculate value.\n"
-        "- Just tell the story by using the trend.\n"
+        "- Tell the story by using the trend and using the number provided in the Q and A.\n"
         "- Do NOT make up any stories without fact from the context.\n"
         "- Write in paragraph format. Not the bullet point format.\n"
     )

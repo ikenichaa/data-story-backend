@@ -6,7 +6,7 @@ With the rise of LLMs and their capabilities in summarising and generating stori
 
 # Tech Stack
 
-![Tech Stack for this Project](src/assets/tech-stack.png)
+![Tech Stack for this Project](assets/tech-stack.png)
 
 # Run the application
 
@@ -25,8 +25,8 @@ For the application to work, it must be run along with the frontend, which is lo
 
 # Application Demo
 
-![Upload Page](src/assets/upload.png)
-![Data storytelling](src/assets/agency.png)
+![Upload Page](assets/upload.png)
+![Data storytelling](assets/agency.png)
 
 # References
 

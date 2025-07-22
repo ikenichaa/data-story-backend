@@ -96,7 +96,7 @@ async def llm_summarize_story_v2(session_id: str, agency: Agency):
 
         await websocket_manager.send_message(session_id, json.dumps({
             "data": {
-                "title": "affective_narrative_v2",
+                "title": "affective_narrative",
                 "result": data_story_result
             }
         }))

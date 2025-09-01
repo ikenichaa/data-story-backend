@@ -37,8 +37,7 @@ negative_emotions = [
    "awe", 
    "sadness", 
    "anger", 
-   "fear", 
-   "disgust"
+   "fear" 
 ]
 
 # model = OllamaLLM(

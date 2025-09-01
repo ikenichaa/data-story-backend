@@ -98,6 +98,7 @@ def generate_descriptive_stats(df: pd.DataFrame):
     fields_type = df.dtypes
     fields_name = fields_type.index
     num_total_fields = len(fields_name)
+    logging.info("Field Type: %s", fields_type)
 
     for i in range (0, num_total_fields):
         fields[fields_name[i]] = str(fields_type.iloc[i])
